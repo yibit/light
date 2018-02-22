@@ -1,0 +1,64 @@
+#!/bin/sh
+
+MYHOME=`pwd`
+light="light.sh"
+
+cat > $light <<EOF
+#/bin/sh
+
+usage()
+{
+    echo "Usage:                        "
+    echo "        \$0 <project name>     "
+    echo "                              "
+
+    return 0
+}
+
+if test \$# -ne 1; then
+    usage
+    exit 1
+fi
+
+NAME=\$1
+
+EOF
+
+base=`find $MYHOME -type d |grep -v -E "(.git|_temp)"`
+for f in $base; do
+
+    if test "x$f" = "x."; then
+        continue;
+    fi
+
+    xf=`echo $f |awk -F "$MYHOME/" ' { print $2; } '` 
+    echo "mkdir -p \$NAME/$xf" >> $light
+done
+
+echo "\n" >> $light
+
+base=`find $MYHOME -type f |grep -v -E "(.git\/|.DS_Store|_temp|\.log|nginx.pid|tags|$light|$0)"`
+for f in $base; do
+
+    xf=`echo $f |awk -F "$MYHOME/" ' { print $2; } '`
+    yf=`echo $xf |sed 's/light/\"\$NAME\"/g'`
+    echo "cat > \$NAME/$yf <<EOF" >> $light
+    cat $xf >> $light
+    echo "EOF\n" >> $light
+
+done
+
+cat >> $light <<EOF
+
+UNAME=\`uname -s\`
+
+if test "x\$UNAME" = "xDarwin"; then
+    find \$NAME -type f |xargs grep -l light |xargs -I {} sed -i '' "s/light/\$NAME/g" {}
+else
+    find \$NAME -type f |xargs grep -l light |xargs -I {} sed -i "s/light/\$NAME/g" {}
+fi
+
+git init
+
+EOF
+

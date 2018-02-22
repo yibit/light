@@ -1,0 +1,11 @@
+light:
+  build: .
+  dockerfile: Dockerfile
+#  image: light
+  ports:
+    - 8081:8080
+#  environment:
+#    -
+  volumes:
+   - ./logs:/light/logs
+

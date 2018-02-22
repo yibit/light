@@ -1,0 +1,6 @@
+.vscode
+.DS_Store
+*.dot
+*_temp
+*.bak
+*~

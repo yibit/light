@@ -1,0 +1,7 @@
+bin
+*.dot
+*test.lua
+.DS_Store
+*.bak
+*_temp
+*~
