@@ -371,6 +371,10 @@ stop: logs/nginx.pid
 	\$(nginx) -p \$\$PWD -c conf/nginx.conf -t
 	kill -QUIT \`cat \$<\`
 
+ps: logs/nginx.pid
+	\@\$(nginx) -p \$\$PWD -c conf/nginx.conf -t
+	\@ps -ef |grep \`cat \$<\` |grep nginx
+
 .PHONY: clean run
 
 clean:

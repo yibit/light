@@ -2,7 +2,7 @@ FROM openresty/openresty:alpine
 
 RUN set -ex \
     && apk add --no-cache --virtual .fetch-deps \
-    make curl lsof
+    make curl perl lsof
 
 COPY . /light
 
