@@ -69,7 +69,6 @@ cat > $NAME/AUTHORS <<EOF
 
 GuiQuan Zhang <guiqzhang at gmail.com>
 yibit <yibitx at 126.com>
-
 EOF
 
 cat > $NAME/conf/"$NAME".conf <<EOF
@@ -80,7 +79,6 @@ cat > $NAME/conf/"$NAME".conf <<EOF
             content_by_lua_file light/light.lua;
             chunked_transfer_encoding off;
         }
-
 EOF
 
 cat > $NAME/conf/mime.types <<EOF
@@ -264,14 +262,13 @@ light:
 #    -
   volumes:
    - ./logs:/light/logs
-
 EOF
 
 cat > $NAME/Dockerfile <<EOF
 FROM openresty/openresty:alpine
 
-RUN set -ex \
-    && apk add --no-cache --virtual .fetch-deps \
+RUN set -ex \\
+    && apk add --no-cache --virtual .fetch-deps \\
     make curl lsof
 
 COPY . /light
@@ -281,7 +278,6 @@ WORKDIR /light
 EXPOSE 8080
 
 ENTRYPOINT [ "nginx", "-p", "/light", "-c", "conf/nginx.conf", "-g", "daemon off;" ]
-
 EOF
 
 cat > $NAME/etc/crontab.conf <<EOF
@@ -309,7 +305,6 @@ cat > $NAME/LICENSE <<EOF
 // WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS
 // ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 // PERFORMANCE OF THIS SOFTWARE.
-
 EOF
 
 cat > $NAME/logs/.gitignore <<EOF
@@ -384,7 +379,6 @@ clean:
 	find . -name \*~ -o -name \*.bak -o -name \.DS_Store -type f |xargs -I {} rm -f {}
 	rm -rf *_temp logs/*.log
 	rm -f light.dot light.png
-
 EOF
 
 cat > $NAME/README.md <<EOF
@@ -397,7 +391,6 @@ Usage
 =============
 
 tools/light.sh mantri
-
 EOF
 
 cat > $NAME/$NAME/"$NAME".lua <<EOF
@@ -420,7 +413,6 @@ cat > $NAME/tools/autotest.sh <<EOF
 #!/bin/sh
 
 curl -v http://localhost:8081/light
-
 EOF
 
 cat > $NAME/VERSION <<EOF
