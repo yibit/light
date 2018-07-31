@@ -42,6 +42,7 @@ for f in $base; do
 
     xf=`echo $f |awk -F "$MYHOME/" ' { print $2; } '`
     yf=`echo $xf |sed 's/light/\"\$NAME\"/g'`
+
     echo "cat > \$NAME/$yf <<EOF" >> $light
     cat $xf >> $light
     echo "EOF\n" >> $light
@@ -62,3 +63,6 @@ git init
 
 EOF
 
+# Makefile
+#sed -i '' "s/\\\`/\\\\\`/g" $light
+#sed -i '' "s/\\\$/\\\\\$/g" $light

@@ -21,7 +21,7 @@ mkdir -p $NAME/.vscode
 mkdir -p $NAME/conf
 mkdir -p $NAME/etc
 mkdir -p $NAME/logs
-mkdir -p $NAME/src
+mkdir -p $NAME/$NAME
 mkdir -p $NAME/tests
 mkdir -p $NAME/tools
 
@@ -56,7 +56,7 @@ cat > $NAME/.vscode/settings.json <<EOF
         "*.cc": "cpp",
         "*.sh": "shellscript",
         "*.lua": "lua",
-        "*.go": "go" 
+        "*.go": "go"
     },
     "files.encoding": "utf8"
 }
@@ -77,7 +77,7 @@ cat > $NAME/conf/"$NAME".conf <<EOF
          location ^~ /light {
             lua_need_request_body on;
             default_type application/json;
-            content_by_lua_file src/light.lua;
+            content_by_lua_file light/light.lua;
             chunked_transfer_encoding off;
         }
 
@@ -210,7 +210,7 @@ http {
     gzip  on;
 
     # set search paths for pure Lua external libraries (';;' is the default path):
-    lua_package_path "\$prefix/src/?.lua;;";
+    lua_package_path "\$prefix/light/?.lua;;";
     lua_code_cache on;
 
     # set search paths for Lua external libraries written in C (can also use ';;'):
@@ -333,7 +333,10 @@ usage:
 	@echo "                                                    "
 	@echo "The commands are:                                   "
 	@echo "                                                    "
-	@echo "    run         start the runner                    "
+	@echo "    run         start nginx                         "
+	@echo "    stop        stop nginx                          "
+	@echo "    reload      reload nginx.conf                   "
+	@echo "    ps          show nginx process                  "
 	@echo "    check       docker-compose start                "
 	@echo "    docker      docker-compose up                   "
 	@echo "    format      format lua code files               "
@@ -345,7 +348,7 @@ format:
 	find . -name "*.lua" |xargs -I {} luafmt -i 4 -w replace {}
 
 luaflow:
-	luaflow -d src/light.lua > light.dot
+	luaflow -d light/light.lua > light.dot
 	dot -Tpng light.dot -o light.png
 
 imgcat: luaflow
@@ -397,7 +400,7 @@ tools/light.sh mantri
 
 EOF
 
-cat > $NAME/src/"$NAME".lua <<EOF
+cat > $NAME/$NAME/"$NAME".lua <<EOF
 local resty_md5 = require "resty.md5"
 local str = require "resty.string"
 
@@ -434,4 +437,3 @@ else
 fi
 
 git init
-

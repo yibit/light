@@ -8,7 +8,6 @@ COPY . /light
 
 WORKDIR /light
 
-EXPOSE 8080
+EXPOSE 8080 80 4443 443
 
 ENTRYPOINT [ "nginx", "-p", "/light", "-c", "conf/nginx.conf", "-g", "daemon off;" ]
-

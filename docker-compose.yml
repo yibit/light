@@ -8,4 +8,3 @@ light:
 #    -
   volumes:
    - ./logs:/light/logs
-

@@ -13,7 +13,10 @@ usage:
 	@echo "                                                    "
 	@echo "The commands are:                                   "
 	@echo "                                                    "
-	@echo "    run         start the runner                    "
+	@echo "    run         start nginx                         "
+	@echo "    stop        stop nginx                          "
+	@echo "    reload      reload nginx.conf                   "
+	@echo "    ps          show nginx process                  "
 	@echo "    check       docker-compose start                "
 	@echo "    docker      docker-compose up                   "
 	@echo "    format      format lua code files               "
@@ -25,7 +28,7 @@ format:
 	find . -name "*.lua" |xargs -I {} luafmt -i 4 -w replace {}
 
 luaflow:
-	luaflow -d src/light.lua > light.dot
+	luaflow -d light/light.lua > light.dot
 	dot -Tpng light.dot -o light.png
 
 imgcat: luaflow
@@ -61,4 +64,3 @@ clean:
 	find . -name \*~ -o -name \*.bak -o -name \.DS_Store -type f |xargs -I {} rm -f {}
 	rm -rf *_temp logs/*.log
 	rm -f light.dot light.png
-
