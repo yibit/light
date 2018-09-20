@@ -1,0 +1,3 @@
+#!/bin/sh
+
+ps -ef |grep $USER |grep nginx |grep -v grep 

@@ -7,4 +7,3 @@ Usage
 =============
 
 tools/light.sh mantri
-
