@@ -1,3 +1,9 @@
 #!/bin/sh
 
-ps -ef |grep $USER |grep nginx |grep -v grep 
+UNAME=`uname -s`
+
+if test "x$UNAME" = "xDarwin"; then
+    ps -ef |grep nginx |grep -v grep
+else
+    ps -ef |grep $USER |grep nginx |grep -v grep
+fi
