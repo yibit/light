@@ -73,7 +73,7 @@ EOF
 
 cat > $NAME/conf/"$NAME".conf <<EOF
 
-         location ^~ /light {
+        location ^~ /light {
             lua_need_request_body on;
             default_type application/json;
             content_by_lua_file light/light.lua;

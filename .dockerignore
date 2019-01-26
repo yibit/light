@@ -1,3 +1,6 @@
+conf/light_cert.crt
+conf/light_cert.csr
+conf/light_cert.key
 .vscode
 .DS_Store
 *.dot

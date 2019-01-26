@@ -20,12 +20,17 @@ usage:
 	@echo "    check       docker-compose start                "
 	@echo "    docker      docker-compose up                   "
 	@echo "    format      format lua code files               "
+	@echo "    cert        update SSL certificate              "
 	@echo "    luaflow     draw flowchart of lua code          "
 	@echo "    clean       remove object files                 "
 	@echo "                                                    "
 
 format:
 	find . -name "*.lua" |xargs -I {} luafmt -i 4 -w replace {}
+
+passwd='yourpasswd'
+cert:
+	sh tools/certificate.sh '$(passwd)'
 
 luaflow:
 	luaflow -d light/light.lua > light.dot

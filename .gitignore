@@ -1,4 +1,7 @@
 bin
+conf/light_cert.crt
+conf/light_cert.csr
+conf/light_cert.key
 *.dot
 *test.lua
 .DS_Store
