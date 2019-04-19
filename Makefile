@@ -25,6 +25,7 @@ usage:
 	@echo "    clean       remove object files                 "
 	@echo "                                                    "
 
+# npm install lua-fmt
 format:
 	find . -name "*.lua" |xargs -I {} luafmt -i 4 -w replace {}
 
@@ -33,8 +34,7 @@ cert:
 	sh tools/certificate.sh '$(passwd)'
 
 luaflow:
-	luaflow -d light/light.lua > light.dot
-	dot -Tpng light.dot -o light.png
+	sh tools/luaflow.sh light/light.lua
 
 imgcat: luaflow
 	imgcat light.png
@@ -67,5 +67,5 @@ ps: logs/nginx.pid
 
 clean:
 	find . -name \*~ -o -name \*.bak -o -name \.DS_Store -type f |xargs -I {} rm -f {}
+	rm -f tests/*.dot light/*.dot tests/*.png light/*.png
 	rm -rf *_temp logs/*.log
-	rm -f light.dot light.png

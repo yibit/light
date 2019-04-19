@@ -37,7 +37,7 @@ done
 
 echo "\n" >> $light
 
-base=`find $MYHOME -type f |grep -v -E "(.git\/|.DS_Store|_temp|\.log|nginx.pid|tags|$light|$0)"`
+base=`find $MYHOME -type f |grep -v -E "(.git\/|.DS_Store|_temp|\.log|\.png|\.crt|\.csr|\.key|nginx.pid|tags|$light|$0)"`
 for f in $base; do
 
     xf=`echo $f |awk -F "$MYHOME/" ' { print $2; } '`
@@ -60,7 +60,6 @@ else
 fi
 
 git init
-
 EOF
 
 # Makefile

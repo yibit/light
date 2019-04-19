@@ -1,3 +1,5 @@
 #!/bin/sh
 
 ps -ef |grep nginx |grep -E "($USER|$UID)" |grep -v -E "(grep|$0)"
+
+cat conf/nginx.conf |grep -E "^[ \t]*listen"

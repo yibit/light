@@ -3,6 +3,8 @@ conf/light_cert.crt
 conf/light_cert.csr
 conf/light_cert.key
 *.dot
+tests/*.png
+light/*.png
 *test.lua
 .DS_Store
 *.bak

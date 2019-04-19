@@ -20,33 +20,38 @@ mkdir -p $NAME/
 mkdir -p $NAME/.vscode
 mkdir -p $NAME/conf
 mkdir -p $NAME/etc
+mkdir -p $NAME/light
 mkdir -p $NAME/logs
-mkdir -p $NAME/$NAME
 mkdir -p $NAME/tests
 mkdir -p $NAME/tools
 
 
 cat > $NAME/.dockerignore <<EOF
+conf/light_cert.crt
+conf/light_cert.csr
+conf/light_cert.key
 .vscode
 .DS_Store
 *.dot
 *_temp
 *.bak
-*~
+*~*
 EOF
 
 cat > $NAME/.gitignore <<EOF
 bin
+conf/light_cert.crt
+conf/light_cert.csr
+conf/light_cert.key
 *.dot
+tests/*.png
+light/*.png
 *test.lua
 .DS_Store
 *.bak
 *_temp
 *~
 EOF
-
-cat > $NAME/.vscode/database.json <<EOF
-{}EOF
 
 cat > $NAME/.vscode/settings.json <<EOF
 {
@@ -56,9 +61,14 @@ cat > $NAME/.vscode/settings.json <<EOF
         "*.cc": "cpp",
         "*.sh": "shellscript",
         "*.lua": "lua",
-        "*.go": "go"
+        "*.go": "go" 
     },
-    "files.encoding": "utf8"
+    "files.encoding": "utf8",
+    "files.exclude": {
+        "**/.git": true,
+        "**/.DS_Store": true,
+        "**/*_temp": true
+    }
 }
 EOF
 
@@ -73,12 +83,30 @@ EOF
 
 cat > $NAME/conf/"$NAME".conf <<EOF
 
-        location ^~ /light {
+         location ^~ /light {
             lua_need_request_body on;
             default_type application/json;
             content_by_lua_file light/light.lua;
             chunked_transfer_encoding off;
         }
+EOF
+
+cat > $NAME/conf/"$NAME"_cert.ini <<EOF
+[req]
+prompt = no
+distinguished_name = light
+req_extensions = ext
+input_password = 'PASSPHRASE'
+
+[light]
+CN = www.light.com
+emailAddress = webmaster@light.com
+O = light Ltd
+L = Beijing
+C = CN
+
+[ext]
+subjectAltName = DNS:www.light.com, DNS:light.com
 EOF
 
 cat > $NAME/conf/mime.types <<EOF
@@ -180,74 +208,118 @@ types {
 EOF
 
 cat > $NAME/conf/nginx.conf <<EOF
-
 #user  nobody;
-worker_processes  1;
+worker_processes 1;
 
-error_log  logs/error.log  notice;
-pid        logs/nginx.pid;
+error_log logs/error.log notice;
+pid logs/nginx.pid;
 
 events {
-    worker_connections  1024;
+    worker_connections 1024;
 }
 
 http {
-    include       mime.types;
-    default_type  application/octet-stream;
+    include mime.types;
+    default_type application/octet-stream;
+    client_max_body_size 1m;
+    client_body_buffer_size 1m;
 
-    log_format  main  '\$remote_addr - \$remote_user [\$time_local] "\$request" '
-                      '\$status $body_bytes_sent "\$http_referer" '
-                      '"\$http_user_agent" "\$http_x_forwarded_for"';
+    log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                    '$status $body_bytes_sent "$http_referer" '
+                    '"$http_user_agent" "$http_x_forwarded_for"';
 
-    access_log  logs/access.log  main;
+    access_log logs/access.log main;
 
-    server_tokens      off;
-    sendfile           off;
-    keepalive_timeout  60;
+    chunked_transfer_encoding off;
 
-    gzip  on;
+    sendfile off;
+    keepalive_timeout 60;
+    gzip on;
+    server_tokens off;
+    more_clear_headers "Server:";
+
+    geo $whiteiplist {
+        default 1;
+        192.168.0.1 0;
+    }
+    map $whiteiplist $limit {
+        1 $binary_remote_addr;
+        0 "";
+    }
+    limit_conn_zone $limit zone=limit:10m;
+    limit_conn limit 1000;
+    limit_req_zone $limit zone=limit_req:10m rate=6000r/s;
+    limit_req zone=limit_req burst=1 nodelay;
+    limit_req_status 503;
+    limit_req_log_level error;
+
+    lua_shared_dict lsd_sensitivewords 2m;
 
     # set search paths for pure Lua external libraries (';;' is the default path):
-    lua_package_path "\$prefix/light/?.lua;;";
+    lua_package_path "$prefix/light/?.lua;";
     lua_code_cache on;
 
     # set search paths for Lua external libraries written in C (can also use ';;'):
-    lua_package_cpath ';;';
+    lua_package_cpath '/usr/local/lib/?.so;';
 
-    limit_req_zone \$binary_remote_addr zone=five:20m rate=5r/s;
-    limit_conn_zone \$binary_remote_addr zone=addr:20m;
+    resolver 8.8.8.8;
 
     server {
-        listen        8080;
-        server_name   localhost;
-        charset       utf-8;
+        listen 8081;
+        server_name localhost;
+        charset utf-8;
 
         #access_log  logs/host.accss.log  main;
 
         include light.conf;
 
         location / {
-            root   html;
-            index  index.html index.htm;
+            root html;
+            index index.html index.htm;
         }
 
-        location ^~ /md5 {
-            default_type text/plain;
+        location ~* /md5 {
+            default_type application/json;
             content_by_lua '
 
             local resty_md5 = require "resty.md5"
             local str = require "resty.string"
 
             local md5 = resty_md5:new()
-            md5:update("987654321")
+            md5:update("helloworld")
             md5:update("abcdef")
-            
+
             local digest = md5:final()
-            
+
             ngx.say("md5.digest: ", str.to_hex(digest))
             ';
         }
     }
+
+    # HTTPS server
+    #
+    server {
+        listen       4443 ssl reuseport;
+        listen       [::]:4443 ssl ipv6only=on;
+        server_name  localhost;
+
+        #access_log  logs/host.access.log  main;
+
+        ssl_certificate      conf/light_cert.crt;
+        ssl_certificate_key  conf/light_cert.key;
+
+        ssl_session_cache    shared:SSL:10m;
+        ssl_session_timeout  5m;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+
+        include light.conf;
+
+        location / {
+            root html;
+            index index.html index.htm;
+        }
+    }
+
 }
 EOF
 
@@ -269,13 +341,13 @@ FROM openresty/openresty:alpine
 
 RUN set -ex \\
     && apk add --no-cache --virtual .fetch-deps \\
-    make curl lsof
+    make curl perl lsof
 
 COPY . /light
 
 WORKDIR /light
 
-EXPOSE 8080
+EXPOSE 8080 80 4443 443
 
 ENTRYPOINT [ "nginx", "-p", "/light", "-c", "conf/nginx.conf", "-g", "daemon off;" ]
 EOF
@@ -307,6 +379,19 @@ cat > $NAME/LICENSE <<EOF
 // PERFORMANCE OF THIS SOFTWARE.
 EOF
 
+cat > $NAME/"$NAME"/"$NAME".lua <<EOF
+local resty_md5 = require "resty.md5"
+local str = require "resty.string"
+
+local md5 = resty_md5:new()
+md5:update("987654321")
+md5:update("abcdef")
+
+local digest = md5:final()
+
+ngx.say("md5.digest: ", str.to_hex(digest))
+EOF
+
 cat > $NAME/logs/.gitignore <<EOF
 *
 !.gitignore
@@ -335,16 +420,21 @@ usage:
 	@echo "    check       docker-compose start                "
 	@echo "    docker      docker-compose up                   "
 	@echo "    format      format lua code files               "
+	@echo "    cert        update SSL certificate              "
 	@echo "    luaflow     draw flowchart of lua code          "
 	@echo "    clean       remove object files                 "
 	@echo "                                                    "
 
+# npm install lua-fmt
 format:
 	find . -name "*.lua" |xargs -I {} luafmt -i 4 -w replace {}
 
+passwd='yourpasswd'
+cert:
+	sh tools/certificate.sh '$(passwd)'
+
 luaflow:
-	luaflow -d light/light.lua > light.dot
-	dot -Tpng light.dot -o light.png
+	sh tools/luaflow.sh light/light.lua
 
 imgcat: luaflow
 	imgcat light.png
@@ -377,8 +467,8 @@ ps: logs/nginx.pid
 
 clean:
 	find . -name \*~ -o -name \*.bak -o -name \.DS_Store -type f |xargs -I {} rm -f {}
+	rm -f tests/*.dot light/*.dot tests/*.png light/*.png
 	rm -rf *_temp logs/*.log
-	rm -f light.dot light.png
 EOF
 
 cat > $NAME/README.md <<EOF
@@ -393,26 +483,112 @@ Usage
 tools/light.sh mantri
 EOF
 
-cat > $NAME/$NAME/"$NAME".lua <<EOF
-local resty_md5 = require "resty.md5"
-local str = require "resty.string"
-
-local md5 = resty_md5:new()
-md5:update("987654321")
-md5:update("abcdef")
-
-local digest = md5:final()
-
-ngx.say("md5.digest: ", str.to_hex(digest))
+cat > $NAME/tests/"$NAME"_wrk.lua <<EOF
+wrk.method = "GET"
+wrk.headers["Content-Type"] = "application/json"
+wrk.body = "{}"
 EOF
 
-cat > $NAME/tests/"$NAME"_wrk.lua <<EOF
+cat > $NAME/tests/test.lua <<EOF
+
+print(os.time())
+local rannumber = "" 
+for i=1,14 do
+    rannumber= rannumber .. math.random(0,9)
+end
+
+print(os.time())
+print(rannumber)
 EOF
 
 cat > $NAME/tools/autotest.sh <<EOF
 #!/bin/sh
 
-curl -v http://localhost:8081/light
+curl -v http://localhost:8080/light
+EOF
+
+cat > $NAME/tools/bench.sh <<EOF
+#!/bin/sh
+
+wrk -c 1 -t 1 -d 1s -R 1 -L -s tests/light_wrk.lua http://127.0.0.1:8081/light
+EOF
+
+cat > $NAME/tools/certificate.sh <<EOF
+#!/bin/sh
+
+set -e
+
+usage() {
+    echo "Usage:                     "
+    echo "      $0 <PASSPHRASE>      "
+    echo "  e.g $0 '3edc!@#$'        "
+    echo "                           "
+
+    return 0
+}
+
+if test $# -ne 1; then
+    usage
+    exit 0
+fi
+
+passwd="$1"
+
+UNAME=`uname -s`
+
+if test "x$UNAME" = "xDarwin"; then
+    sed -i '' "s/PASSPHRASE/$passwd/g" conf/light_cert.ini
+else
+    sed -i "s/PASSPHRASE/$passwd/g" conf/light_cert.ini
+fi
+
+openssl genrsa -des3 -out conf/light_cert.key -passout pass:$passwd 2048
+openssl req -new -config conf/light_cert.ini -key conf/light_cert.key -passin pass:$passwd -out conf/light_cert.csr
+openssl rsa -in conf/light_cert.key -passin pass:$passwd -out conf/light_cert.key
+openssl x509 -req -days 365 -in conf/light_cert.csr -signkey conf/light_cert.key -out conf/light_cert.crt
+
+if test "x$UNAME" = "xDarwin"; then
+    sed -i '' "s/input_password =.*/input_password = 'PASSPHRASE'/g" conf/light_cert.ini
+else
+    sed -i "s/input_password =.*/input_password = 'PASSPHRASE'/g" conf/light_cert.ini
+fi
+EOF
+
+cat > $NAME/tools/getport.sh <<EOF
+#!/bin/sh
+
+set -e
+
+ports=`cat conf/nginx.conf |grep -E "^[ \t]*listen" |awk '{ print $2; }' |awk -F ";" '{ print $1; }'`
+
+for p in $ports; do
+    echo $p
+done
+EOF
+
+cat > $NAME/tools/luaflow.sh <<EOF
+#!/bin/sh
+
+luaflow -d $1 > "$1".dot && dot -Tpng "$1".dot -o "$1".png
+EOF
+
+cat > $NAME/tools/psngx <<EOF
+#!/bin/sh
+
+ps -ef |grep nginx |grep -E "($USER|$UID)" |grep -v -E "(grep|$0)"
+
+cat conf/nginx.conf |grep -E "^[ \t]*listen"
+EOF
+
+cat > $NAME/tools/setup.sh <<EOF
+#!/bin/sh
+
+# cjson - for lua 5.2+ (-DLUA_COMPAT_5_1) - https://github.com/openresty/lua-cjson/issues/36
+# https://luarocks.org/modules/openresty/lua-cjson
+luarocks install lua-cjson 2.1.0
+luarocks install luaflow
+
+npm install lua-fmt
 EOF
 
 cat > $NAME/VERSION <<EOF
